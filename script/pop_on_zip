@@ -1,0 +1,25 @@
+
+cat * > all_nuts.csv
+
+create or replace view demo as from read_csv('estat_demo_r_pjangrp3_en.csv.gz', types={'sex': 'VARCHAR'});
+select * from demo limit 2;
+
+create or replace table most_recent_pop as
+select 
+geo, age, sum(OBS_VALUE) as pop_count
+from demo t1
+WHERE TIME_PERIOD = (
+    SELECT MAX(TIME_PERIOD)
+    FROM demo t2
+    WHERE t2.geo = t1.geo
+) and age not in ('UNKNOWN', 'UNK')
+group by all 
+
+create or replace table postal_code_pop_counts as
+select CODE as postal_code, NUTS3, age, pop_count
+from most_recent_pop
+join 'pc2024_NUTS-2024_v3.0/all_nuts.csv' on geo == NUTS3::varchar;
+
+COPY postal_code_pop_counts TO 'postal_code_pop_counts_by_age.parquet' (FORMAT parquet);
+
+select * from postal_code_pop_counts
